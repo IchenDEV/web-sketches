@@ -109,9 +109,24 @@ function random() {
 }
 const rand = (a, b) => a + (b - a) * random();
 const assetBase = `${import.meta.env.BASE_URL}assets/`;
-const texture = await new THREE.TextureLoader().loadAsync(
-  `${assetBase}limestone.png`,
-);
+// These assets are independent; overlap their network requests on a cold visit.
+const [
+  texture,
+  inkTexture,
+  mountainMap,
+  willowMap,
+  initialArchitecture,
+  initialTrunks,
+  initialShore,
+] = await Promise.all([
+  new THREE.TextureLoader().loadAsync(`${assetBase}limestone.png`),
+  new THREE.TextureLoader().loadAsync(`${assetBase}ink-stone.png`),
+  new THREE.TextureLoader().loadAsync(`${assetBase}mountains-v2.png`),
+  new THREE.TextureLoader().loadAsync(`${assetBase}willow-foliage.png`),
+  new GLTFLoader().loadAsync(`${assetBase}architecture.glb`),
+  new GLTFLoader().loadAsync(`${assetBase}willow-trunks.glb`),
+  new GLTFLoader().loadAsync(`${assetBase}shore-rocks.glb`),
+]);
 texture.colorSpace = THREE.SRGBColorSpace;
 texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
 texture.repeat.set(2, 2);
@@ -134,9 +149,6 @@ const earth = new THREE.MeshStandardMaterial({
   map: texture,
   roughness: 1,
 });
-const inkTexture = await new THREE.TextureLoader().loadAsync(
-  `${assetBase}ink-stone.png`,
-);
 inkTexture.colorSpace = THREE.SRGBColorSpace;
 inkTexture.wrapS = inkTexture.wrapT = THREE.RepeatWrapping;
 function inkMaterial(material, strength = 0.14) {
@@ -234,9 +246,6 @@ function mesh(geometry, material, parent = originalScene) {
   parent.add(m);
   return m;
 }
-const mountainMap = await new THREE.TextureLoader().loadAsync(
-  `${assetBase}mountains-v2.png`,
-);
 mountainMap.colorSpace = THREE.SRGBColorSpace;
 const backdrop = mesh(
   new THREE.PlaneGeometry(390, 105),
@@ -407,9 +416,6 @@ function leaf(x, y, z, size) {
 }
 // Stable planting seed keeps the grove composition repeatable.
 seed = 1146177413;
-const willowMap = await new THREE.TextureLoader().loadAsync(
-  `${assetBase}willow-foliage.png`,
-);
 willowMap.colorSpace = THREE.SRGBColorSpace;
 const willowWash = new THREE.ShaderMaterial({
   transparent: true,
@@ -692,7 +698,7 @@ water.position.y = -0.04;
 scene.add(water);
 
 try {
-  const gltf = await new GLTFLoader().loadAsync(`${assetBase}architecture.glb`);
+  const gltf = initialArchitecture;
   originalScene.add(gltf.scene);
   gltf.scene.traverse((o) => {
     if (o.isMesh) {
@@ -746,9 +752,7 @@ try {
     }
   });
   window.architecture = gltf.scene;
-  const trunks = await new GLTFLoader().loadAsync(
-    `${assetBase}willow-trunks.glb`,
-  );
+  const trunks = initialTrunks;
   trunks.scene.traverse((o) => {
     if (o.isMesh) {
       const points = o.geometry.attributes.position;
@@ -771,7 +775,7 @@ try {
     }
   });
   originalScene.add(trunks.scene);
-  const shore = await new GLTFLoader().loadAsync(`${assetBase}shore-rocks.glb`);
+  const shore = initialShore;
   shore.scene.traverse((o) => {
     if (o.isMesh) {
       o.castShadow = true;
