@@ -1,0 +1,11 @@
+{
+  "name": "web-sketches",
+  "private": true,
+  "type": "module",
+  "workspaces": ["projects/*"],
+  "scripts": {
+    "dev:west-lake": "npm run dev --workspace projects/west-lake",
+    "build": "node scripts/build.mjs",
+    "test": "node --test scripts/build.test.mjs"
+  }
+}

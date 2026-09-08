@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>湖山入画 · 西湖</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main id="scene" aria-label="可旋转的西湖三维山水场景"></main>
+    <header>
+      <div class="seal">西湖</div>
+      <div>
+        <h1>湖山入画</h1>
+        <p>一湖烟水 · 半卷江南</p>
+      </div>
+    </header>
+    <aside class="poem">水光潋滟晴方好<br />山色空蒙雨亦奇</aside>
+    <footer>
+      <span class="hint">拖动环顾<span> / </span>滚轮远近</span>
+      <nav aria-label="场景控制">
+        <button id="motion" aria-pressed="false" title="暂停水波与风">
+          暂停光阴</button
+        ><button id="reset" title="回到初始构图">归于画境</button
+        ><button id="capture" title="保存当前画面">留一帧</button
+        ><button id="fullscreen" title="全屏欣赏">全屏</button>
+      </nav>
+    </footer>
+    <div id="loading" role="status">正在铺开湖山…</div>
+    <div id="toast" role="status"></div>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
