@@ -495,39 +495,131 @@ leaves.castShadow = true;
 leaves.receiveShadow = true;
 scene.add(leaves);
 
+// One surface owns reflections, capillary waves, contact shading and ripples.
+// Keeping the ripples here avoids static line geometry being reflected twice.
 const waterShader = structuredClone(Reflector.ReflectorShader);
 waterShader.uniforms = THREE.UniformsUtils.clone(
   Reflector.ReflectorShader.uniforms,
 );
 waterShader.uniforms.time = { value: 0 };
+waterShader.uniforms.reflectionTexel = {
+  value: new THREE.Vector2(1 / 1536, 1 / 768),
+};
 waterShader.vertexShader = waterShader.vertexShader
   .replace("varying vec4 vUv;", "varying vec4 vUv; varying vec3 worldPos;")
   .replace(
     "vUv = textureMatrix",
     "worldPos = (modelMatrix * vec4(position, 1.0)).xyz; vUv = textureMatrix",
   );
-waterShader.fragmentShader = `uniform vec3 color; uniform sampler2D tDiffuse; uniform float time; varying vec4 vUv; varying vec3 worldPos;
-#include <common>
-float hash21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
-float waterNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash21(i),hash21(i+vec2(1,0)),f.x),mix(hash21(i+vec2(0,1)),hash21(i+1.0),f.x),f.y);}
-void main(){
- vec2 p=worldPos.xz; float w=sin(p.y*5.0+p.x*.7-time*.7)*.42+sin(p.y*11.0-p.x*1.3+time*.5)*.2+sin(p.y*21.0+p.x*2.2-time*.8)*.10;
- vec2 uv=vUv.xy/vUv.w; uv.x+=w*.002;uv.y+=w*.0015;
- vec3 reflected=texture2D(tDiffuse,uv).rgb;
- float streak=pow(max(0.0,sin(p.y*13.0+sin(p.x*.45+time*.12)*2.0+time*.4)),16.0);
- float band = smoothstep(-.3,.55,sin(p.y*7.0+sin(p.x*.42)*2.0));
-float washBand=waterNoise(vec2(p.x*.25,p.y*4.0-time*.08))*.65+waterNoise(vec2(p.x*.65+12.0,p.y*8.0))* .35;
- float clustered=waterNoise(p*.075+vec2(13.0,7.0));
- float inkBand=smoothstep(.61,.8,washBand)*smoothstep(.3,.6,clustered);
- vec3 col=mix(vec3(.77,.83,.78),reflected,.04+.24*band)+streak*.009+w*.007;
- col=mix(col,vec3(.35,.49,.49),inkBand*.36);
+waterShader.fragmentShader = /* glsl */ `
+  uniform sampler2D tDiffuse;
+  uniform vec2 reflectionTexel;
+  uniform float time;
+  varying vec4 vUv;
+  varying vec3 worldPos;
+  #include <common>
 
- gl_FragColor=vec4(col,1.0);
- #include <tonemapping_fragment>
- #include <colorspace_fragment>
- gl_FragColor.rgb=mix(gl_FragColor.rgb,vec3(.968,.955,.923),.23);
- gl_FragColor.rgb-=vec3(.11,.075,.055)*inkBand;
-}`;
+  float hash21(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+
+  float waterNoise(vec2 p) {
+    vec2 cell = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(hash21(cell), hash21(cell + vec2(1.0, 0.0)), f.x),
+      mix(hash21(cell + vec2(0.0, 1.0)), hash21(cell + 1.0), f.x),
+      f.y
+    );
+  }
+
+  // xy: surface slope; zw: dark and light sides of an outward-moving crest.
+  vec4 objectRipple(vec2 p, vec2 center, vec2 shape, float radius, float phaseOffset) {
+    vec2 offset = (p - center) / shape;
+    float distanceToCenter = length(offset);
+    float distanceFromEdge = max(0.0, distanceToCenter - radius);
+    if (distanceFromEdge > 7.0) return vec4(0.0);
+
+    vec2 direction = offset / max(distanceToCenter, 0.001);
+    float envelope = exp(-distanceFromEdge * 0.63)
+      * smoothstep(radius * 0.82, radius + 0.18, distanceToCenter);
+    float arc = smoothstep(0.24, 0.72,
+      waterNoise(direction * 3.6 + phaseOffset + vec2(time * 0.025, 0.0)));
+    float phase = distanceFromEdge * 6.4 - time * 1.45 + phaseOffset;
+    phase += waterNoise(direction * 5.0 + phaseOffset) * 0.8;
+    float aa = min(0.16, fwidth(phase));
+    float darkCrest = smoothstep(0.88 - aa, 1.0, cos(phase));
+    float lightCrest = smoothstep(0.88 - aa, 1.0, cos(phase - 0.48));
+    vec2 slope = direction / shape * sin(phase) * envelope * 0.12;
+    return vec4(slope, darkCrest * envelope * arc, lightCrest * envelope * arc);
+  }
+
+  vec3 softReflection(vec2 uv, float roughness) {
+    vec2 blur = reflectionTexel * vec2(2.8 + roughness * 4.0, 0.65);
+    return texture2D(tDiffuse, uv).rgb * 0.4
+      + texture2D(tDiffuse, uv + vec2(blur.x, 0.0)).rgb * 0.2
+      + texture2D(tDiffuse, uv - vec2(blur.x, 0.0)).rgb * 0.2
+      + texture2D(tDiffuse, uv + vec2(0.0, blur.y)).rgb * 0.1
+      + texture2D(tDiffuse, uv - vec2(0.0, blur.y)).rgb * 0.1;
+  }
+
+  void main() {
+    vec2 p = worldPos.xz;
+    float swell = sin(p.x * 0.28 + p.y * 1.45 - time * 0.55);
+    float crossing = sin(p.x * 0.73 - p.y * 2.5 + time * 0.8);
+    vec2 slope = vec2(swell * 0.38 + crossing * 0.13,
+      sin(p.y * 3.7 + p.x * 0.2 - time * 0.7) * 0.4);
+
+    vec4 ripples = objectRipple(p, vec2(22.0, 9.0), vec2(1.0), 0.62, 0.4);
+    ripples += objectRipple(p, vec2(29.0, 15.0), vec2(1.0), 0.9, 2.6);
+    ripples += objectRipple(p, vec2(37.0, 10.0), vec2(1.0), 0.77, 4.7);
+    ripples += objectRipple(p, vec2(16.0, 3.0), vec2(2.75, 0.85), 0.96, 1.8);
+    slope += ripples.xy;
+
+    vec2 uv = vUv.xy / vUv.w + slope * vec2(0.0032, 0.0021);
+    float roughness = waterNoise(p * 0.18 + time * 0.025);
+    vec3 reflected = softReflection(uv, roughness);
+    vec3 surfaceNormal = normalize(vec3(-slope.x * 0.065, 1.0, -slope.y * 0.065));
+    vec3 viewDirection = normalize(cameraPosition - worldPos);
+    float grazing = pow(1.0 - clamp(dot(surfaceNormal, viewDirection), 0.0, 1.0), 3.0);
+
+    // Ripples distort recognizable silhouettes rather than replacing them with stripes.
+    float reflectionBreak = waterNoise(vec2(p.x * 0.36, p.y * 5.0 - time * 0.1));
+    float reflectionWeight = mix(0.3, 0.58, grazing)
+      * mix(0.62, 1.0, smoothstep(0.24, 0.7, reflectionBreak));
+    float distanceHaze = smoothstep(60.0, 160.0, length(cameraPosition - worldPos));
+    vec3 waterTint = mix(vec3(0.61, 0.71, 0.68), vec3(0.79, 0.81, 0.75), distanceHaze * 0.6);
+    float reflectedLuminance = dot(reflected, vec3(0.2126, 0.7152, 0.0722));
+    float reflectedSubject = smoothstep(0.04, 0.36, 0.87 - reflectedLuminance);
+    // Do not modulate empty sky reflections: that turns the whole lake into a line field.
+    vec3 color = mix(waterTint, reflected, reflectionWeight * reflectedSubject);
+    color += (waterNoise(p * 0.065 + time * 0.01) - 0.5) * vec3(0.012, 0.016, 0.014);
+
+    // Sparse, differently sized pigment marks leave calm open water between clusters.
+    vec2 flow = p + vec2(waterNoise(p * 0.09) * 1.6,
+      waterNoise(p * 0.08 + 7.0) * 0.24);
+    float smallMarks = waterNoise(flow * vec2(0.42, 7.5) - vec2(time * 0.01, time * 0.065));
+    float clusters = waterNoise(flow * 0.12 + 9.0);
+    float pigment = smoothstep(0.56, 0.8, smallMarks) * smoothstep(0.3, 0.67, clusters);
+    color = mix(color, vec3(0.32, 0.48, 0.46), pigment * 0.3);
+
+    float leftBank = abs(length((p - vec2(-35.0, -3.0)) / vec2(20.0, 10.0)) - 1.0) * 10.0;
+    float rightBank = abs(length((p - vec2(2.0, -6.0)) / vec2(8.0, 5.0)) - 1.0) * 5.0;
+    float bankContact = exp(-min(leftBank, rightBank) * 2.0);
+    color = mix(color, vec3(0.38, 0.5, 0.43), bankContact * 0.16);
+    color -= ripples.z * vec3(0.16, 0.18, 0.165);
+    color += ripples.w * vec3(0.16, 0.15, 0.12);
+
+    gl_FragColor = vec4(color, 1.0);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+    gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.968, 0.955, 0.923), 0.1);
+    gl_FragColor.rgb -= ripples.z * vec3(0.035, 0.045, 0.043);
+    gl_FragColor.rgb += ripples.w * vec3(0.018, 0.02, 0.018);
+    gl_FragColor.rgb -= pigment * vec3(0.035, 0.025, 0.018);
+  }
+`;
 const water = new Reflector(new THREE.PlaneGeometry(550, 550), {
   textureWidth: 1536,
   textureHeight: 768,
@@ -535,48 +627,11 @@ const water = new Reflector(new THREE.PlaneGeometry(550, 550), {
   shader: waterShader,
   multisample: 0,
 });
+water.name = "lake-water";
 water.material.depthWrite = false;
 water.rotation.x = -Math.PI / 2;
 water.position.y = -0.04;
 scene.add(water);
-const ripplePositions = [];
-for (const [x, z, r] of [
-  [22, 9, 1],
-  [29, 15, 1.4],
-  [37, 10, 1.15],
-  [16, 3, 2],
-])
-  for (let k = 0; k < 5; k++)
-    for (let j = 0; j < 96; j++) {
-      if (Math.sin(j * 0.09 + k * 1.8) + Math.sin(j * 0.23 - k * 0.8) < 0.48)
-        continue;
-      let a = (j / 96) * Math.PI * 2,
-        b = ((j + 1) / 96) * Math.PI * 2,
-        rr = r + k * 0.6;
-      ripplePositions.push(
-        x + Math.cos(a) * rr,
-        0.005,
-        z + Math.sin(a) * rr * 0.55,
-        x + Math.cos(b) * rr,
-        0.005,
-        z + Math.sin(b) * rr * 0.55,
-      );
-    }
-const rg = new THREE.BufferGeometry();
-rg.setAttribute(
-  "position",
-  new THREE.Float32BufferAttribute(ripplePositions, 3),
-);
-scene.add(
-  new THREE.LineSegments(
-    rg,
-    new THREE.LineBasicMaterial({
-      color: "#8da5a0",
-      transparent: true,
-      opacity: 0.42,
-    }),
-  ),
-);
 
 try {
   const gltf = await new GLTFLoader().loadAsync(`${assetBase}architecture.glb`);
