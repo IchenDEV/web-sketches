@@ -1,7 +1,7 @@
 :root {
   font-family: "Songti SC", "Noto Serif CJK SC", serif;
   color: #42483f;
-  background: #f5f2e8;
+  background: var(--paper, #f5f2e8);
   font-synthesis: none;
 }
 * {
@@ -110,7 +110,7 @@ button:focus-visible {
   inset: 0;
   display: grid;
   place-content: center;
-  background: #f5f2e8;
+  background: var(--paper, #f5f2e8);
   letter-spacing: 7px;
   transition: opacity 0.5s;
   pointer-events: none;
@@ -168,6 +168,61 @@ button:focus-visible {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(0deg, #f5f2e8 0%, #f5f2e800 13%, #f5f2e800 94%, #f5f2e844),
-    linear-gradient(90deg, #f5f2e8aa, #f5f2e800 5%, #f5f2e800 96%, #f5f2e8aa);
+    linear-gradient(
+      0deg,
+      var(--paper, #f5f2e8) 0%,
+      transparent 13%,
+      transparent 94%,
+      transparent
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--paper, #f5f2e8) 66%, transparent),
+      transparent 5%,
+      transparent 96%,
+      color-mix(in srgb, var(--paper, #f5f2e8) 66%, transparent)
+    );
+}
+
+.destinations {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.destinations label {
+  color: #6d7869;
+}
+#destination {
+  font: inherit;
+  letter-spacing: 1px;
+  color: #3d513d;
+  background: color-mix(in srgb, var(--paper, #f5f2e8) 88%, transparent);
+  border: 0;
+  border-bottom: 1px solid #899981;
+  padding: 8px 24px 8px 5px;
+  cursor: pointer;
+}
+#destination:focus-visible {
+  outline: 2px solid #697d66;
+  outline-offset: 4px;
+}
+@media (max-width: 700px) {
+  footer {
+    flex-direction: column;
+    gap: 10px;
+  }
+  header p {
+    max-width: 220px;
+    line-height: 1.5;
+  }
+  #destination {
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+  nav {
+    gap: 18px;
+  }
+  #toast {
+    bottom: 112px;
+  }
 }

@@ -6,7 +6,7 @@
 
 | 作品 | 说明 | 源码 |
 | --- | --- | --- |
-| 湖山入画 | 可环顾、暂停和留影的三维西湖水墨场景 | [projects/west-lake](projects/west-lake) |
+| 杭州小景 | 三潭印月、雷峰夕照、断桥残雪、九溪烟树四处三维山水，可切换与分享 | [projects/west-lake](projects/west-lake) |
 
 ## 本地开发
 

@@ -70,12 +70,88 @@ try {
     flowingWater,
     "Water must move after resuming",
   );
+  const ids = ["three-pools", "leifeng", "broken-bridge", "nine-creeks"];
+  const switchTo = (id) => {
+    run("select", "#destination", id);
+    run(
+      "wait",
+      "--fn",
+      `sceneDebug.destination === '${id}' && getComputedStyle(document.querySelector("#loading")).opacity === "0"`,
+    );
+    assert.deepEqual(
+      get(
+        `sceneDebug.scene.children.filter(o => ${JSON.stringify(ids)}.includes(o.name) && o.visible).map(o => o.name)`,
+      ),
+      [id],
+    );
+    assert.equal(get('document.querySelector("#destination").value'), id);
+    assert.equal(get("location.hash"), `#${id}`);
+  };
+  run("reload");
+  run(
+    "wait",
+    "--fn",
+    'window.sceneDebug?.destination === "three-pools" && !sceneDebug.loading',
+  );
+  const blockedModel = new URL("assets/leifeng.glb", get("location.href")).href;
+  run("network", "route", blockedModel, "--abort");
+  run("select", "#destination", "leifeng");
+  run(
+    "wait",
+    "--fn",
+    'sceneDebug.destination === "three-pools" && !sceneDebug.loading && document.querySelector("#toast").textContent.includes("载入失败")',
+  );
+  assert.equal(
+    get('document.querySelector("#destination").value'),
+    "three-pools",
+  );
+  run("network", "unroute", blockedModel);
+  run("console", "--clear");
+  run("errors", "--clear");
+  for (const id of ids.slice(1)) switchTo(id);
+  const cachedGeometryCount = get("sceneDebug.renderer.info.memory.geometries");
+  switchTo("leifeng");
+  switchTo("nine-creeks");
+  assert.equal(
+    get("sceneDebug.renderer.info.memory.geometries"),
+    cachedGeometryCount,
+    "Revisits must reuse scene geometry",
+  );
+  run("back");
+  run(
+    "wait",
+    "--fn",
+    'sceneDebug.destination === "leifeng" && !sceneDebug.loading',
+  );
+  run("forward");
+  run(
+    "wait",
+    "--fn",
+    'sceneDebug.destination === "nine-creeks" && !sceneDebug.loading',
+  );
+  run("reload");
+  run(
+    "wait",
+    "--fn",
+    'window.sceneDebug?.destination === "nine-creeks" && !sceneDebug.loading',
+  );
+  assert.equal(get("document.title"), "九溪烟树 · 杭州小景");
+  switchTo("broken-bridge");
+  run("click", "#motion");
+  const snowStoppedAt = get("sceneDebug.time");
+  run("eval", "new Promise(resolve => setTimeout(resolve, 160))");
+  assert.equal(
+    get("sceneDebug.time"),
+    snowStoppedAt,
+    "Snow and stream animation must share the pause clock",
+  );
+  run("click", "#motion");
   run("set", "viewport", "390", "844");
   assert.equal(get("document.documentElement.scrollWidth <= innerWidth"), true);
   assert.ok(!run("console").includes("[error]"));
   assert.ok(!run("errors").trim());
   console.log(
-    "Scene load, rendering, visual water animation/pause, orbit, reset, PNG export and narrow layout passed.",
+    "Scene load, rendering, water animation/pause, destination switching/cache/deep links/history, orbit, reset, PNG export and narrow layout passed.",
   );
 } finally {
   run("close");

@@ -21,3 +21,15 @@
 **mountains-v2.png** — Panoramic Chinese West Lake environment backdrop, delicate traditional watercolor and fine ink wash on warm ivory paper. Recompose only the highest far background mountain: apex around 43% horizontal and 23% vertical. Keep the near wooded hill crest at 52% horizontal and 45% vertical; right peak at 72% horizontal. Layered white mist, soft ink style, desaturated ivory sky, shore and lake. No buildings or towers. Natural slopes, no smeared or warped texture. Panorama 3:1.
 
 **willow-foliage.png** — One rounded weeping willow canopy cluster, isolated foliage texture. Traditional Chinese ink and watercolor botanical painting: arching fine dark gray-green twigs trail down as graceful fronds; pale sage wash masses build airy overlapping volume with selective sparse leaf strokes. Irregular silhouette and gaps, no trunk, ground, sky, text, border or cast shadow. Light desaturated gray-green, dark lines only 10% of coverage, vertical 3:4. Intended transparent background; the runtime material removes the generated neutral background by chroma.
+
+
+## 杭州景点扩展
+
+`leifeng.glb`、`broken-bridge.glb`、`nine-creeks.glb` 为 Blender 创建的独立地形、建筑、树木和岸石模型。雷峰塔采用五层八角楼阁轮廓，断桥采用单孔低拱与白堤构图，九溪采用曲折溪谷与汀步构图。参考资料：[杭州文保平台雷峰塔遗址](https://wbdl.hzwbzx.cn/house?id=85)、[杭州市档案馆“建筑”](https://www.hzarchives.org.cn/info/6791)。
+
+模型使用 Draco 压缩；`draco/` 中的本地解码器来自 Three.js 0.180.0 随附的 Google Draco，许可证见 `draco/LICENSE.txt`。运行时不依赖外部 CDN。
+
+新增贴图使用内置 ImageGen 生成：
+
+- **jiuxi-backdrop.png**：3:1 panoramic Chinese ink and transparent watercolor forest-valley backdrop for Jiuxi, layered moss-green and blue-green wooded slopes framing a central opening, ivory haze, distant trees dissolving into mist, hints of a narrow stream. No foreground landmarks, buildings or text.
+- **woodland-canopy.png**：Isolated broadleaf canopy cluster on neutral white, rounded irregular overlapping sage-green wash masses, fine charcoal-green twig and leaf-edge marks, restrained ochre leaves, organic lobes and gaps. No trunk, ground, checkerboard or text. Color-keyed by the foliage shader.

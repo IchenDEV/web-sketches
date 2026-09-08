@@ -1,3 +1,8 @@
+import {
+  destinations,
+  destinationFromHash,
+  loadDestination,
+} from "./destinations.js";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -14,6 +19,9 @@ function showLoadError() {
 }
 addEventListener("unhandledrejection", showLoadError);
 const scene = new THREE.Scene();
+const originalScene = new THREE.Group();
+originalScene.name = "three-pools";
+scene.add(originalScene);
 scene.background = new THREE.Color("#f5f2e8");
 scene.fog = new THREE.FogExp2("#e9eadf", 0.0068);
 const renderer = new THREE.WebGLRenderer({
@@ -43,25 +51,35 @@ controls.minPolarAngle = Math.PI * 0.44;
 controls.maxPolarAngle = Math.PI * 0.49;
 controls.minAzimuthAngle = -0.35;
 controls.maxAzimuthAngle = 0.35;
+let sceneView = destinations["three-pools"].view;
 function resetCamera() {
   controls.enableDamping = false;
   controls.update();
   camera.fov = Math.max(
     32,
-    THREE.MathUtils.radToDeg(2 * Math.atan(43 / (85 * camera.aspect))),
+    THREE.MathUtils.radToDeg(
+      2 * Math.atan(sceneView.width / (85 * camera.aspect)),
+    ),
   );
   camera.updateProjectionMatrix();
   const distance = Math.max(
-    64,
-    43 / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / camera.aspect,
+    sceneView.minimum,
+    sceneView.width /
+      Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) /
+      camera.aspect,
   );
-  camera.position.set(0, 8 + distance * 0.13, distance);
-  controls.target.set(0, 8, -3);
+  camera.position.set(
+    0,
+    sceneView.height + distance * 0.13,
+    distance + sceneView.depth + 3,
+  );
+  controls.target.set(0, sceneView.height, sceneView.depth);
   controls.update();
   controls.enableDamping = true;
 }
 resetCamera();
-scene.add(new THREE.HemisphereLight("#fbf4de", "#748579", 1.45));
+const skyLight = new THREE.HemisphereLight("#fbf4de", "#748579", 1.45);
+scene.add(skyLight);
 const sun = new THREE.DirectionalLight("#fff9e9", 2.2);
 sun.position.set(-35, 65, 40);
 sun.castShadow = true;
@@ -203,7 +221,7 @@ function inkEdges(object, threshold = 26, opacity = 0.32) {
 }
 inkMaterial(stone, 0.32);
 inkMaterial(bark, 0.22);
-function mesh(geometry, material, parent = scene) {
+function mesh(geometry, material, parent = originalScene) {
   const m = new THREE.Mesh(geometry, material);
   m.castShadow = true;
   m.receiveShadow = true;
@@ -224,13 +242,21 @@ const backdrop = mesh(
     depthWrite: false,
   }),
 );
+const backdropWash = { value: new THREE.Vector3(0.84, 0.85, 0.8) };
+const backdropWashAmount = { value: 0.33 };
 backdrop.material.onBeforeCompile = (shader) => {
+  shader.uniforms.backdropWash = backdropWash;
+  shader.uniforms.backdropWashAmount = backdropWashAmount;
+  shader.fragmentShader =
+    "uniform vec3 backdropWash; uniform float backdropWashAmount;\n" +
+    shader.fragmentShader;
   shader.fragmentShader = shader.fragmentShader.replace(
     "#include <opaque_fragment>",
-    "diffuseColor.a *= smoothstep(.22,.39,vMapUv.y); outgoingLight = mix(outgoingLight,vec3(.84,.85,.80),.33); diffuseColor.a *= 1.0-smoothstep(.75,1.0,vMapUv.y);\n#include <opaque_fragment>",
+    "diffuseColor.a *= smoothstep(.22,.39,vMapUv.y); outgoingLight = mix(outgoingLight,backdropWash,backdropWashAmount); diffuseColor.a *= 1.0-smoothstep(.75,1.0,vMapUv.y);\n#include <opaque_fragment>",
   );
 };
 backdrop.renderOrder = -1;
+scene.add(backdrop);
 backdrop.position.set(0, 0, -135);
 backdrop.castShadow = false;
 backdrop.receiveShadow = false;
@@ -297,7 +323,7 @@ for (let i = 0; i < 180; i++) {
 }
 rocks.castShadow = true;
 rocks.receiveShadow = true;
-scene.add(rocks);
+originalScene.add(rocks);
 
 const leafGeometry = new THREE.BufferGeometry();
 leafGeometry.setAttribute(
@@ -410,7 +436,7 @@ for (const [x, z, h, spread] of [
       z + Math.sin(a) * r * 0.44,
     );
     patch.rotation.y = Math.sin(a) * 0.35;
-    scene.add(patch);
+    originalScene.add(patch);
   }
 }
 function tree(x, y, z, h) {
@@ -493,7 +519,7 @@ leafMatrices.forEach((m, i) => {
 });
 leaves.castShadow = true;
 leaves.receiveShadow = true;
-scene.add(leaves);
+originalScene.add(leaves);
 
 // One surface owns reflections, capillary waves, contact shading and ripples.
 // Keeping the ripples here avoids static line geometry being reflected twice.
@@ -502,6 +528,27 @@ waterShader.uniforms = THREE.UniformsUtils.clone(
   Reflector.ReflectorShader.uniforms,
 );
 waterShader.uniforms.time = { value: 0 };
+waterShader.uniforms.waterTintBase = {
+  value: new THREE.Vector3(0.61, 0.71, 0.68),
+};
+waterShader.uniforms.originalBanks = { value: true };
+waterShader.uniforms.rippleCount = { value: 4 };
+waterShader.uniforms.rippleCenters = {
+  value: [
+    new THREE.Vector4(22, 9, 0.62, 0.4),
+    new THREE.Vector4(29, 15, 0.9, 2.6),
+    new THREE.Vector4(37, 10, 0.77, 4.7),
+    new THREE.Vector4(16, 3, 0.96, 1.8),
+  ],
+};
+waterShader.uniforms.rippleShapes = {
+  value: [
+    new THREE.Vector2(1, 1),
+    new THREE.Vector2(1, 1),
+    new THREE.Vector2(1, 1),
+    new THREE.Vector2(2.75, 0.85),
+  ],
+};
 waterShader.uniforms.reflectionTexel = {
   value: new THREE.Vector2(1 / 1536, 1 / 768),
 };
@@ -515,6 +562,11 @@ waterShader.fragmentShader = /* glsl */ `
   uniform sampler2D tDiffuse;
   uniform vec2 reflectionTexel;
   uniform float time;
+  uniform vec3 waterTintBase;
+  uniform bool originalBanks;
+  uniform int rippleCount;
+  uniform vec4 rippleCenters[4];
+  uniform vec2 rippleShapes[4];
   varying vec4 vUv;
   varying vec3 worldPos;
   #include <common>
@@ -571,10 +623,10 @@ waterShader.fragmentShader = /* glsl */ `
     vec2 slope = vec2(swell * 0.38 + crossing * 0.13,
       sin(p.y * 3.7 + p.x * 0.2 - time * 0.7) * 0.4);
 
-    vec4 ripples = objectRipple(p, vec2(22.0, 9.0), vec2(1.0), 0.62, 0.4);
-    ripples += objectRipple(p, vec2(29.0, 15.0), vec2(1.0), 0.9, 2.6);
-    ripples += objectRipple(p, vec2(37.0, 10.0), vec2(1.0), 0.77, 4.7);
-    ripples += objectRipple(p, vec2(16.0, 3.0), vec2(2.75, 0.85), 0.96, 1.8);
+    vec4 ripples=vec4(0.0);
+    for(int i=0;i<4;i++) {
+      if(i<rippleCount) ripples+=objectRipple(p,rippleCenters[i].xy,rippleShapes[i],rippleCenters[i].z,rippleCenters[i].w);
+    }
     slope += ripples.xy;
 
     vec2 uv = vUv.xy / vUv.w + slope * vec2(0.0032, 0.0021);
@@ -589,7 +641,7 @@ waterShader.fragmentShader = /* glsl */ `
     float reflectionWeight = mix(0.3, 0.58, grazing)
       * mix(0.62, 1.0, smoothstep(0.24, 0.7, reflectionBreak));
     float distanceHaze = smoothstep(60.0, 160.0, length(cameraPosition - worldPos));
-    vec3 waterTint = mix(vec3(0.61, 0.71, 0.68), vec3(0.79, 0.81, 0.75), distanceHaze * 0.6);
+    vec3 waterTint = mix(waterTintBase, vec3(0.79, 0.81, 0.75), distanceHaze * 0.6);
     float reflectedLuminance = dot(reflected, vec3(0.2126, 0.7152, 0.0722));
     float reflectedSubject = smoothstep(0.04, 0.36, 0.87 - reflectedLuminance);
     // Do not modulate empty sky reflections: that turns the whole lake into a line field.
@@ -606,7 +658,7 @@ waterShader.fragmentShader = /* glsl */ `
 
     float leftBank = abs(length((p - vec2(-35.0, -3.0)) / vec2(20.0, 10.0)) - 1.0) * 10.0;
     float rightBank = abs(length((p - vec2(2.0, -6.0)) / vec2(8.0, 5.0)) - 1.0) * 5.0;
-    float bankContact = exp(-min(leftBank, rightBank) * 2.0);
+    float bankContact = originalBanks ? exp(-min(leftBank, rightBank) * 2.0) : 0.0;
     color = mix(color, vec3(0.38, 0.5, 0.43), bankContact * 0.16);
     color -= ripples.z * vec3(0.16, 0.18, 0.165);
     color += ripples.w * vec3(0.16, 0.15, 0.12);
@@ -635,7 +687,7 @@ scene.add(water);
 
 try {
   const gltf = await new GLTFLoader().loadAsync(`${assetBase}architecture.glb`);
-  scene.add(gltf.scene);
+  originalScene.add(gltf.scene);
   gltf.scene.traverse((o) => {
     if (o.isMesh) {
       const positions = o.geometry.attributes.position;
@@ -712,7 +764,7 @@ try {
       o.material.bumpScale = 0.16;
     }
   });
-  scene.add(trunks.scene);
+  originalScene.add(trunks.scene);
   const shore = await new GLTFLoader().loadAsync(`${assetBase}shore-rocks.glb`);
   shore.scene.traverse((o) => {
     if (o.isMesh) {
@@ -723,7 +775,7 @@ try {
       inkEdges(o, 19, 0.48);
     }
   });
-  scene.add(shore.scene);
+  originalScene.add(shore.scene);
 } catch (error) {
   document.querySelector("#loading").textContent = "亭桥尚未载入，请刷新重试";
   console.error(error);
@@ -767,7 +819,7 @@ document.querySelector("#capture").onclick = () => {
     const url = URL.createObjectURL(blob),
       a = document.createElement("a");
     a.href = url;
-    a.download = "湖山入画.png";
+    a.download = `${destinations[currentDestination].title}.png`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
     toast("画面已保存");
@@ -783,6 +835,106 @@ addEventListener("resize", () => {
   renderer.setSize(innerWidth, innerHeight);
   resetCamera();
 });
+let currentDestination = "three-pools";
+let activeGroup = originalScene;
+let selectionVersion = 0;
+const destinationSelect = document.querySelector("#destination");
+const loading = document.querySelector("#loading");
+async function switchDestination(id) {
+  const version = ++selectionVersion;
+  const config = destinations[id];
+  loading.textContent = `正在铺开${config.title}…`;
+  loading.classList.remove("done");
+  destinationSelect.value = id;
+  try {
+    const group =
+      id === "three-pools"
+        ? originalScene
+        : await loadDestination(id, {
+            assetBase,
+            texture,
+            inkMaterial,
+            inkEdges,
+            time: windUniform,
+          });
+    if (version !== selectionVersion) return;
+    activeGroup.visible = false;
+    if (!group.parent) scene.add(group);
+    group.visible = true;
+    activeGroup = group;
+    currentDestination = id;
+    sceneView = config.view;
+    scene.background.set(config.paper);
+    scene.fog.color.set(config.fog);
+    scene.fog.density = config.density;
+    skyLight.color.set(config.sky);
+    skyLight.groundColor.set(config.ground);
+    sun.color.set(config.sun);
+    sun.intensity = config.sunPower;
+    backdrop.material.map = group.userData.backdrop || mountainMap;
+    backdropWash.value.fromArray(config.wash);
+    backdropWashAmount.value = config.washAmount;
+    water.material.uniforms.waterTintBase.value.fromArray(config.water);
+    water.material.uniforms.originalBanks.value = id === "three-pools";
+    const centers = water.material.uniforms.rippleCenters.value;
+    const shapes = water.material.uniforms.rippleShapes.value;
+    water.material.uniforms.rippleCount.value =
+      id === "three-pools" ? 4 : id === "broken-bridge" ? 0 : 1;
+    if (id === "three-pools") {
+      [
+        [22, 9, 0.62, 0.4],
+        [29, 15, 0.9, 2.6],
+        [37, 10, 0.77, 4.7],
+        [16, 3, 0.96, 1.8],
+      ].forEach((entry, i) => centers[i].fromArray(entry));
+      [
+        [1, 1],
+        [1, 1],
+        [1, 1],
+        [2.75, 0.85],
+      ].forEach((entry, i) => shapes[i].fromArray(entry));
+    } else if (id === "leifeng") {
+      centers[0].set(-10, 8, 0.96, 1.8);
+      shapes[0].set(2.75, 0.85);
+    } else if (id === "nine-creeks") {
+      centers[0].set(-3, -19.5, 0.5, 1);
+      shapes[0].set(2.8, 1);
+    }
+    document.documentElement.style.setProperty("--paper", config.paper);
+    document.querySelector("h1").textContent = config.title;
+    document.querySelector("header p").textContent = config.subtitle;
+    document.querySelector(".seal").textContent =
+      id === "nine-creeks" ? "九溪" : "西湖";
+    document
+      .querySelector(".poem")
+      .replaceChildren(
+        document.createTextNode(config.poem[0]),
+        document.createElement("br"),
+        document.createTextNode(config.poem[1]),
+      );
+    document
+      .querySelector("#scene")
+      .setAttribute("aria-label", `${config.title}三维山水场景`);
+    document.title = `${config.title} · 杭州小景`;
+    resetCamera();
+    loading.classList.add("done");
+  } catch (error) {
+    if (version !== selectionVersion) return;
+    destinationSelect.value = currentDestination;
+    history.replaceState(null, "", `#${currentDestination}`);
+    loading.classList.add("done");
+    toast("景点载入失败，请重新选择重试");
+    console.error(error);
+  }
+}
+destinationSelect.disabled = false;
+destinationSelect.onchange = () => {
+  location.hash = destinationSelect.value;
+};
+addEventListener("hashchange", () =>
+  switchDestination(destinationFromHash(location.hash)),
+);
+await switchDestination(destinationFromHash(location.hash));
 window.sceneDebug = {
   renderer,
   scene,
@@ -798,6 +950,12 @@ window.sceneDebug = {
     return leafMatrices.length;
   },
   fps: 0,
+  get destination() {
+    return currentDestination;
+  },
+  get loading() {
+    return !loading.classList.contains("done");
+  },
   ready: true,
 };
 renderer.setAnimationLoop((now) => {
