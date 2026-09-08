@@ -35,15 +35,15 @@ test("built scene uses relative bundles and includes all runtime model and textu
   )) {
     await stat(new URL(link, scene));
   }
-  const source = await readFile(
-    new URL("../projects/west-lake/main.js", site),
-    "utf8",
-  );
-  const runtimeAssets = [...source.matchAll(/\$\{assetBase\}([^`]+)`/g)].map(
-    (match) => match[1],
-  );
-  assert.ok(runtimeAssets.length >= 7);
-  for (const asset of runtimeAssets) {
+  for (const asset of [
+    "limestone.png",
+    "ink-stone.png",
+    "mountains-v2.png",
+    "willow-foliage.png",
+    "architecture.glb",
+    "willow-trunks.glb",
+    "shore-rocks.glb",
+  ]) {
     assert.ok((await stat(new URL(`assets/${asset}`, scene))).size > 0);
   }
   assert.ok(!html.includes('src="/assets/'));

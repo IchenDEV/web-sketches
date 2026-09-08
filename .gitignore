@@ -8,3 +8,5 @@ _site/
 
 __pycache__/
 *.pyc
+
+.dream-loop/

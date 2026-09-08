@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+import { loadTexture, loadModel, disposeGroup } from "./assets.js";
+import { inkMaterials } from "./materials.js";
 
 import { addAtmosphere } from "./atmosphere.js";
 import { destinations } from "./catalog.js";
@@ -55,35 +55,29 @@ function landscapeMaterial(material, hillside) {
   };
 }
 
-// Keep three recent models. The original scene and shared textures remain resident.
+// Keep three recent scenes, including Three Pools. Shared textures stay cached.
 const loaded = new Map();
 const resolved = new Map();
 export function trimDestinationCache(activeId, requestedId = activeId) {
   for (const [id, group] of resolved) {
     if (resolved.size <= 3) break;
     if (id === activeId || id === requestedId) continue;
-    group.removeFromParent();
-    const resources = new Set();
-    group.traverse((object) => {
-      if (object.geometry) resources.add(object.geometry);
-      for (const material of [object.material].flat().filter(Boolean))
-        resources.add(material);
-    });
-    for (const resource of resources) resource.dispose();
-    group.userData.backdrop?.dispose();
+    disposeGroup(group);
     resolved.delete(id);
     loaded.delete(id);
   }
 }
-let canopyPromise;
-let hillsidePromise;
-const decoder = new DRACOLoader();
-decoder.setDecoderConfig({ type: "wasm" });
-decoder.setWorkerLimit(2);
-export function loadDestination(
-  id,
-  { assetBase, texture, inkMaterial, inkEdges, time },
-) {
+const pendingLoads = new Map();
+export function cancelPendingDestinations(keepId) {
+  for (const [id, controller] of pendingLoads) {
+    if (id !== keepId) {
+      controller.abort();
+      pendingLoads.delete(id);
+      loaded.delete(id);
+    }
+  }
+}
+export function loadDestination(id, { time }) {
   if (loaded.has(id)) {
     if (resolved.has(id)) {
       const group = resolved.get(id);
@@ -93,41 +87,40 @@ export function loadDestination(
     return loaded.get(id);
   }
   const config = destinations[id];
+  const controller = new AbortController();
+  const { signal } = controller;
+  pendingLoads.set(id, controller);
   const pending = (async () => {
-    decoder.setDecoderPath(`${assetBase}draco/`);
-    const group = (
-      await new GLTFLoader()
-        .setDRACOLoader(decoder)
-        .loadAsync(`${assetBase}${config.asset}`)
-    ).scene;
+    const backdropPromise = loadTexture(config.backdrop || "mountains-v2.png");
+    if (id === "three-pools") {
+      const [{ buildThreePools }, backdrop] = await Promise.all([
+        import("./three-pools.js"),
+        backdropPromise,
+      ]);
+      signal.throwIfAborted();
+      const group = await buildThreePools(time, signal);
+      group.userData.backdrop = backdrop;
+      resolved.set(id, group);
+      return group;
+    }
+    const legacyInk = ["leifeng", "broken-bridge", "nine-creeks"].includes(id);
+    const [model, texture, canopyTexture, hillside, inkTexture, backdrop] =
+      await Promise.all([
+        loadModel(config.asset, signal),
+        loadTexture("limestone.png"),
+        id === "broken-bridge" ? null : loadTexture("woodland-canopy.png"),
+        legacyInk ? null : loadTexture("hillside-ink.png"),
+        legacyInk ? loadTexture("ink-stone.png") : null,
+        backdropPromise,
+      ]);
+    const group = model.scene;
+    if (signal.aborted) {
+      disposeGroup(group);
+      signal.throwIfAborted();
+    }
     group.name = id;
-    const canopyTexture =
-      id === "broken-bridge"
-        ? null
-        : await (canopyPromise ??= new THREE.TextureLoader()
-            .loadAsync(`${assetBase}woodland-canopy.png`)
-            .then((texture) => {
-              texture.colorSpace = THREE.SRGBColorSpace;
-              texture.flipY = false;
-              return texture;
-            })
-            .catch((error) => {
-              canopyPromise = null;
-              throw error;
-            }));
-    const hillside = ["leifeng", "broken-bridge", "nine-creeks"].includes(id)
-      ? null
-      : await (hillsidePromise ??= new THREE.TextureLoader()
-          .loadAsync(`${assetBase}hillside-ink.png`)
-          .then((map) => {
-            map.colorSpace = THREE.SRGBColorSpace;
-            map.wrapS = map.wrapT = THREE.RepeatWrapping;
-            return map;
-          })
-          .catch((error) => {
-            hillsidePromise = null;
-            throw error;
-          }));
+    group.userData.backdrop = backdrop;
+    const { inkMaterial, inkEdges } = inkMaterials(inkTexture);
     const meshes = [];
     group.traverse((object) => {
       if (object.isMesh) meshes.push(object);
@@ -223,12 +216,6 @@ export function loadDestination(
           inkEdges(object, 32, 0.18);
       }
     }
-    if (config.backdrop) {
-      group.userData.backdrop = await new THREE.TextureLoader().loadAsync(
-        `${assetBase}${config.backdrop}`,
-      );
-      group.userData.backdrop.colorSpace = THREE.SRGBColorSpace;
-    }
     addAtmosphere(group, config, time);
     if (id === "broken-bridge") {
       const points = [];
@@ -270,9 +257,14 @@ export function loadDestination(
     resolved.set(id, group);
     return group;
   })().catch((error) => {
-    loaded.delete(id);
+    if (loaded.get(id) === pending) loaded.delete(id);
     throw error;
   });
+  pending
+    .finally(() => {
+      if (pendingLoads.get(id) === controller) pendingLoads.delete(id);
+    })
+    .catch(() => {});
   loaded.set(id, pending);
   return pending;
 }

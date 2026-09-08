@@ -43,3 +43,5 @@
 建筑特征参考：[灵隐与飞来峰](https://wgly.hangzhou.gov.cn/art/2023/12/1/art_1229734028_58951314.html)、[六和塔](https://wgly.hangzhou.gov.cn/art/2013/7/7/art_1229495371_58931730.html)、[钱祠表忠](https://westlake.hangzhou.gov.cn/art/2024/4/30/art_1643937_59046981.html)。场景是水墨意象复刻，地形、间距与建筑比例为画面适度调整。
 
 `hillside-ink.png` 由内置 ImageGen 为本项目生成：灰绿苔石与密林小笔触的可重复水墨纹理，用于山坡表面，保留几何山脊与真实受光。无第三方照片或模型。提示要点：平面材质、无地平线、细小林冠与苔石、灰绿矿物色、无白纸空洞、低方向性光照。
+
+首景的 `architecture.glb` 已用 glTF Transform 4.5 的 Draco 编码压缩（位置16位、法线12位、UV14位），从9.95MB降至1.16MB。保留材质名称和网格结构；同相机静止截图对比确认外观保持。

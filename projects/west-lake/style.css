@@ -381,3 +381,11 @@ dialog::backdrop {
     padding-right: 10px;
   }
 }
+
+/* Navigation remains available while a scene is being fetched. */
+footer {
+  z-index: 2;
+}
+#toast {
+  z-index: 3;
+}

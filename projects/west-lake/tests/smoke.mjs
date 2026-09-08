@@ -148,7 +148,8 @@ try {
   run("click", "#motion");
   run("set", "viewport", "390", "844");
   assert.equal(get("document.documentElement.scrollWidth <= innerWidth"), true);
-  assert.ok(!run("console").includes("[error]"));
+  const consoleOutput = run("console");
+  assert.ok(!consoleOutput.includes("[error]"), consoleOutput);
   assert.ok(!run("errors").trim());
   console.log(
     "Scene load, rendering, water animation/pause, destination switching/cache/deep links/history, orbit, reset, PNG export and narrow layout passed.",
