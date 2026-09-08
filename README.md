@@ -6,7 +6,7 @@
 
 | 作品 | 说明 | 源码 |
 | --- | --- | --- |
-| 杭州小景 | 三潭印月、雷峰夕照、断桥残雪、九溪烟树四处三维山水，可切换与分享 | [projects/west-lake](projects/west-lake) |
+| 杭州小景 | 旧十景、新十景与新新十景，共三十处三维山水，可逐景游览与分享 | [projects/west-lake](projects/west-lake) |
 
 ## 本地开发
 

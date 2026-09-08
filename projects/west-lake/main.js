@@ -2,7 +2,9 @@ import {
   destinations,
   destinationFromHash,
   loadDestination,
+  trimDestinationCache,
 } from "./destinations.js";
+import { createAtlas } from "./atlas.js";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -53,18 +55,22 @@ controls.minAzimuthAngle = -0.35;
 controls.maxAzimuthAngle = 0.35;
 let sceneView = destinations["three-pools"].view;
 function resetCamera() {
+  const framingWidth =
+    innerWidth < 650
+      ? (sceneView.portraitWidth ?? sceneView.width)
+      : sceneView.width;
   controls.enableDamping = false;
   controls.update();
   camera.fov = Math.max(
     32,
     THREE.MathUtils.radToDeg(
-      2 * Math.atan(sceneView.width / (85 * camera.aspect)),
+      2 * Math.atan(framingWidth / (85 * camera.aspect)),
     ),
   );
   camera.updateProjectionMatrix();
   const distance = Math.max(
     sceneView.minimum,
-    sceneView.width /
+    framingWidth /
       Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) /
       camera.aspect,
   );
@@ -836,12 +842,17 @@ addEventListener("resize", () => {
   resetCamera();
 });
 let currentDestination = "three-pools";
+let requestedDestination = "three-pools";
 let activeGroup = originalScene;
 let selectionVersion = 0;
 const destinationSelect = document.querySelector("#destination");
 const loading = document.querySelector("#loading");
+const updateAtlas = createAtlas((id) => {
+  location.hash = id;
+});
 async function switchDestination(id) {
   const version = ++selectionVersion;
+  requestedDestination = id;
   const config = destinations[id];
   loading.textContent = `正在铺开${config.title}…`;
   loading.classList.remove("done");
@@ -857,12 +868,18 @@ async function switchDestination(id) {
             inkEdges,
             time: windUniform,
           });
-    if (version !== selectionVersion) return;
+    if (version !== selectionVersion) {
+      trimDestinationCache(currentDestination, requestedDestination);
+      return;
+    }
     activeGroup.visible = false;
     if (!group.parent) scene.add(group);
     group.visible = true;
     activeGroup = group;
     currentDestination = id;
+    trimDestinationCache(id);
+    updateAtlas(id);
+    water.visible = config.waterVisible !== false;
     sceneView = config.view;
     scene.background.set(config.paper);
     scene.fog.color.set(config.fog);
@@ -879,7 +896,11 @@ async function switchDestination(id) {
     const centers = water.material.uniforms.rippleCenters.value;
     const shapes = water.material.uniforms.rippleShapes.value;
     water.material.uniforms.rippleCount.value =
-      id === "three-pools" ? 4 : id === "broken-bridge" ? 0 : 1;
+      id === "three-pools"
+        ? 4
+        : ["leifeng", "nine-creeks"].includes(id)
+          ? 1
+          : 0;
     if (id === "three-pools") {
       [
         [22, 9, 0.62, 0.4],

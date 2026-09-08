@@ -226,3 +226,158 @@ button:focus-visible {
     bottom: 112px;
   }
 }
+
+#open-atlas {
+  font-family: "Songti SC", serif;
+  font-size: 14px;
+  border-bottom-color: #a6ad98;
+}
+#previous-scene,
+#next-scene {
+  font-size: 22px;
+  padding: 0 7px;
+  min-height: 36px;
+}
+#scene-position {
+  font-size: 10px;
+  white-space: nowrap;
+}
+dialog {
+  color: #42483f;
+  border: 1px solid #c7caba;
+  background: #f5f2e8;
+  width: min(980px, calc(100vw - 32px));
+  max-height: 88dvh;
+  padding: 30px 38px 22px;
+  box-shadow: 0 20px 100px #29342b33;
+}
+dialog::backdrop {
+  background: #263c3559;
+  backdrop-filter: blur(7px);
+}
+.atlas-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.atlas-heading p {
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: #74806a;
+  margin: 0 0 8px;
+}
+.atlas-heading h2 {
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: 6px;
+  margin: 0;
+}
+#atlas-collections section {
+  margin-top: 28px;
+}
+#atlas-collections h3 {
+  font-weight: 400;
+  font-size: 19px;
+  letter-spacing: 3px;
+  margin: 0;
+}
+#atlas-collections h3 span {
+  font:
+    10px system-ui,
+    sans-serif;
+  letter-spacing: 1px;
+  color: #7c8272;
+  margin-left: 15px;
+}
+#atlas-collections section > p {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #7c8272;
+  margin: 8px 0 12px;
+}
+.atlas-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.atlas-grid button {
+  text-align: left;
+  border: 1px solid #d9dacc;
+  padding: 12px 10px;
+  position: relative;
+  min-height: 76px;
+  transition: background 0.15s;
+}
+.atlas-grid button:hover {
+  background: #e8ecdf;
+  border-color: #a9b09a;
+}
+.atlas-grid button[aria-current] {
+  background: #e4e9da;
+  border-color: #77896d;
+}
+.atlas-grid strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  margin: 5px 0 7px;
+}
+.atlas-grid small {
+  display: block;
+  font-size: 9px;
+  line-height: 1.6;
+  color: #78806e;
+}
+.atlas-number {
+  font:
+    9px system-ui,
+    sans-serif;
+  color: #986451;
+}
+.atlas-note {
+  font-size: 10px;
+  text-align: center;
+  color: #7c8272;
+  margin: 24px 0 0;
+  letter-spacing: 2px;
+}
+@media (max-width: 1000px) {
+  #scene-position {
+    display: none;
+  }
+  footer {
+    left: 24px;
+    right: 24px;
+  }
+  .destinations {
+    gap: 8px;
+  }
+}
+@media (max-width: 700px) {
+  dialog {
+    padding: 22px 18px;
+    max-height: 86dvh;
+  }
+  .atlas-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .atlas-grid button {
+    min-height: 78px;
+  }
+  .atlas-heading h2 {
+    font-size: 23px;
+  }
+  #atlas-collections h3 span {
+    font-size: 9px;
+  }
+  #open-atlas {
+    font-size: 12px;
+  }
+  .destinations {
+    gap: 5px;
+  }
+  #destination {
+    padding-right: 10px;
+  }
+}

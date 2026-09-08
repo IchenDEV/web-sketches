@@ -3,8 +3,10 @@ import { readFile, stat } from "node:fs/promises";
 import test from "node:test";
 import {
   destinations,
+  collections,
+  destinationOrder,
   destinationFromHash,
-} from "../projects/west-lake/destinations.js";
+} from "../projects/west-lake/catalog.js";
 
 const site = new URL("../_site/", import.meta.url);
 
@@ -62,6 +64,7 @@ test("landmark routes and their local decoders and assets ship together", async 
   }
   for (const asset of [
     "woodland-canopy.png",
+    "hillside-ink.png",
     "draco/draco_decoder.wasm",
     "draco/draco_wasm_wrapper.js",
     "draco/LICENSE.txt",
@@ -71,4 +74,65 @@ test("landmark routes and their local decoders and assets ship together", async 
         0,
     );
   }
+});
+
+test("three generations contain exactly thirty distinct reachable scenes", () => {
+  assert.deepEqual(
+    collections.map((group) => group.ids.length),
+    [10, 10, 10],
+  );
+  assert.equal(new Set(destinationOrder).size, 30);
+  assert.deepEqual(
+    new Set(destinationOrder),
+    new Set(Object.keys(destinations)),
+  );
+  assert.deepEqual(
+    collections.map((group) => group.ids.map((id) => destinations[id].title)),
+    [
+      [
+        "苏堤春晓",
+        "曲院风荷",
+        "平湖秋月",
+        "断桥残雪",
+        "花港观鱼",
+        "柳浪闻莺",
+        "三潭印月",
+        "双峰插云",
+        "雷峰夕照",
+        "南屏晚钟",
+      ],
+      [
+        "云栖竹径",
+        "满陇桂雨",
+        "虎跑梦泉",
+        "龙井问茶",
+        "九溪烟树",
+        "吴山天风",
+        "阮墩环碧",
+        "黄龙吐翠",
+        "玉皇飞云",
+        "宝石流霞",
+      ],
+      [
+        "灵隐禅踪",
+        "六和听涛",
+        "岳墓栖霞",
+        "湖滨晴雨",
+        "钱祠表忠",
+        "万松书缘",
+        "杨堤景行",
+        "三台云水",
+        "梅坞春早",
+        "北街梦寻",
+      ],
+    ],
+  );
+  const assets = Object.values(destinations)
+    .map((config) => config.asset)
+    .filter(Boolean);
+  assert.equal(
+    new Set(assets).size,
+    29,
+    "Each added place needs its own authored model",
+  );
 });

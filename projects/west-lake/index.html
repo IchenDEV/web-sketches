@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/assets/seal.svg" />
     <title>杭州小景 · 湖山入画</title>
     <link rel="stylesheet" href="/style.css" />
   </head>
@@ -18,13 +19,11 @@
     <aside class="poem">水光潋滟晴方好<br />山色空蒙雨亦奇</aside>
     <footer>
       <div class="destinations">
-        <label for="destination">游杭州</label>
-        <select id="destination" disabled aria-label="选择杭州景点">
-          <option value="three-pools">三潭印月</option>
-          <option value="leifeng">雷峰夕照</option>
-          <option value="broken-bridge">断桥残雪</option>
-          <option value="nine-creeks">九溪烟树</option></select
-        ><span class="hint">拖动环顾 · 滚轮远近</span>
+        <button id="open-atlas" aria-haspopup="dialog">西湖三十景</button>
+        <button id="previous-scene" aria-label="上一景">‹</button>
+        <select id="destination" disabled aria-label="选择杭州景点"></select>
+        <button id="next-scene" aria-label="下一景">›</button>
+        <span id="scene-position" class="hint"></span>
       </div>
       <nav aria-label="场景控制">
         <button id="motion" aria-pressed="false" title="暂停水波与风">
@@ -34,6 +33,17 @@
         ><button id="fullscreen" title="全屏欣赏">全屏</button>
       </nav>
     </footer>
+    <dialog id="atlas" aria-labelledby="atlas-title">
+      <div class="atlas-heading">
+        <div>
+          <p>三代十景 · 一卷西湖</p>
+          <h2 id="atlas-title">湖山，三十境</h2>
+        </div>
+        <button id="close-atlas" aria-label="关闭景目">关闭 ×</button>
+      </div>
+      <div id="atlas-collections"></div>
+      <p class="atlas-note">选择一景，步入画中。拖动环顾，滚轮远近。</p>
+    </dialog>
     <div id="loading" role="status">正在铺开湖山…</div>
     <div id="toast" role="status"></div>
     <script type="module" src="/main.js"></script>

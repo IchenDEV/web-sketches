@@ -33,3 +33,13 @@
 
 - **jiuxi-backdrop.png**：3:1 panoramic Chinese ink and transparent watercolor forest-valley backdrop for Jiuxi, layered moss-green and blue-green wooded slopes framing a central opening, ivory haze, distant trees dissolving into mist, hints of a narrow stream. No foreground landmarks, buildings or text.
 - **woodland-canopy.png**：Isolated broadleaf canopy cluster on neutral white, rounded irregular overlapping sage-green wash masses, fine charcoal-green twig and leaf-edge marks, restrained ochre leaves, organic lobes and gaps. No trunk, ground, checkerboard or text. Color-keyed by the foliage shader.
+
+## 西湖三十景
+
+三代名单采用南宋旧十景、1985 新十景与 2007 三评西湖十景（新新十景），共 30 景。[新华社 2007-10-28 名单报道](https://news.cctv.com/china/20071028/100288.shtml)；[新十景名单与图示：杭州网／西湖景区管委会](https://ywhz.hangzhou.com.cn/hssj/content/content_6219183.htm)。
+
+新增 26 个独立 GLB 均为本项目在 Blender 中建模，未下载第三方模型。可重建脚本在 `scripts/models/`：`common.py` 为曲面瓦顶、曲枝、石岸等共享几何，`classic.py` 补齐 7 个旧十景，`new.py` 补齐 9 个新十景，`third.py` 完成 10 个三评十景。按材质合并网格、使用本地 Draco 压缩与解码。亭廊屋面、石桥、茶垄、竹节、红鱼、石虎、龙首、碑坊与街屋均为三维几何；树冠与远山延续原有手绘贴图。
+
+建筑特征参考：[灵隐与飞来峰](https://wgly.hangzhou.gov.cn/art/2023/12/1/art_1229734028_58951314.html)、[六和塔](https://wgly.hangzhou.gov.cn/art/2013/7/7/art_1229495371_58931730.html)、[钱祠表忠](https://westlake.hangzhou.gov.cn/art/2024/4/30/art_1643937_59046981.html)。场景是水墨意象复刻，地形、间距与建筑比例为画面适度调整。
+
+`hillside-ink.png` 由内置 ImageGen 为本项目生成：灰绿苔石与密林小笔触的可重复水墨纹理，用于山坡表面，保留几何山脊与真实受光。无第三方照片或模型。提示要点：平面材质、无地平线、细小林冠与苔石、灰绿矿物色、无白纸空洞、低方向性光照。
