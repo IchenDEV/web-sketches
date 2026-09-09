@@ -39,8 +39,8 @@ try {
       `${destinations[id].title} · 杭州小景`,
     );
     assert.ok(
-      value("sceneDebug.renderer.info.render.triangles") > 10000,
-      `${id} must render geometry`,
+      value("sceneDebug.renderer.info.render.triangles") > 5000,
+      `${id} must render scene surfaces`,
     );
     assert.deepEqual(
       value(

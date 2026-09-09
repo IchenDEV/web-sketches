@@ -53,9 +53,14 @@ export function disposeGroup(group) {
   group.removeFromParent();
   const resources = new Set();
   group.traverse((object) => {
+    if (object.isInstancedMesh) object.dispose();
     if (object.geometry) resources.add(object.geometry);
     for (const material of [object.material].flat().filter(Boolean))
       resources.add(material);
   });
   for (const resource of resources) resource.dispose();
+  for (const texture of group.userData.ownedTextures || []) {
+    texture.dispose();
+    texture.image.close?.();
+  }
 }

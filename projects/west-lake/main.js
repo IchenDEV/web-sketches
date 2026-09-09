@@ -46,8 +46,59 @@ controls.minPolarAngle = Math.PI * 0.44;
 controls.maxPolarAngle = Math.PI * 0.49;
 controls.minAzimuthAngle = -0.35;
 controls.maxAzimuthAngle = 0.35;
+let paintedMode = false;
+let frameAspect = 3;
 let sceneView = destinations["three-pools"].view;
+function resizeScene() {
+  const host = document.querySelector("#scene");
+  const height = paintedMode
+    ? innerWidth < 650
+      ? Math.min(innerHeight * 0.66, 520)
+      : Math.min(innerHeight, innerWidth / frameAspect)
+    : innerHeight;
+  host.style.height = `${height}px`;
+  host.style.top = `${(innerHeight - height) / 2}px`;
+  host.style.bottom = "auto";
+  camera.aspect = innerWidth / height;
+  renderer.setSize(innerWidth, height);
+  resetCamera();
+}
+function constrainPaintedCamera() {
+  // Translate the camera and target together. Rotation would expose the top
+  // edge of foreground artwork that extends beyond the original frame.
+  const limit = innerWidth < 650 ? 22 : 3.5;
+  const x = THREE.MathUtils.clamp(camera.position.x, -limit, limit);
+  camera.position.x = x;
+  camera.position.y = 0;
+  controls.target.set(x, 0, 0);
+  camera.lookAt(controls.target);
+}
 function resetCamera() {
+  controls.enableDamping = false;
+  controls.update();
+  controls.enablePan = paintedMode;
+  controls.enableRotate = !paintedMode;
+  controls.screenSpacePanning = true;
+  controls.mouseButtons.LEFT = paintedMode
+    ? THREE.MOUSE.PAN
+    : THREE.MOUSE.ROTATE;
+  controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
+  controls.touches.ONE = paintedMode ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+  controls.minDistance = paintedMode ? 52 : 34;
+  controls.maxDistance = paintedMode ? 60 : 130;
+  controls.minPolarAngle = paintedMode ? Math.PI / 2 : Math.PI * 0.44;
+  controls.maxPolarAngle = paintedMode ? Math.PI / 2 : Math.PI * 0.49;
+  if (paintedMode) {
+    camera.fov = THREE.MathUtils.radToDeg(
+      2 * Math.atan(80 / frameAspect / 120),
+    );
+    camera.updateProjectionMatrix();
+    camera.position.set(0, 0, 60);
+    controls.target.set(0, 0, 0);
+    controls.update();
+    controls.enableDamping = true;
+    return;
+  }
   const framingWidth =
     innerWidth < 650
       ? (sceneView.portraitWidth ?? sceneView.width)
@@ -338,10 +389,7 @@ addEventListener("keydown", (e) => {
     document.body.classList.toggle("clean");
 });
 addEventListener("resize", () => {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-  resetCamera();
+  resizeScene();
 });
 let currentDestination = null;
 let requestedDestination = "three-pools";
@@ -373,9 +421,14 @@ async function switchDestination(id) {
     currentDestination = id;
     trimDestinationCache(id);
     updateAtlas(id);
-    water.visible = config.waterVisible !== false;
+    paintedMode = Boolean(group.userData.painted);
+    frameAspect = group.userData.frameAspect || 3;
+    document.documentElement.dataset.sceneMode = paintedMode
+      ? "painted"
+      : "model";
+    water.visible = !paintedMode && config.waterVisible !== false;
     sceneView = config.view;
-    scene.background.set(config.paper);
+    scene.background.set(paintedMode ? "#f7f4eb" : config.paper);
     scene.fog.color.set(config.fog);
     scene.fog.density = config.density;
     skyLight.color.set(config.sky);
@@ -384,7 +437,7 @@ async function switchDestination(id) {
     sun.intensity = config.sunPower;
     backdrop.material.map = group.userData.backdrop;
     backdrop.material.needsUpdate = true;
-    backdrop.visible = true;
+    backdrop.visible = !paintedMode;
     backdropWash.value.fromArray(config.wash);
     backdropWashAmount.value = config.washAmount;
     water.material.uniforms.waterTintBase.value.fromArray(config.water);
@@ -417,7 +470,10 @@ async function switchDestination(id) {
       centers[0].set(-3, -19.5, 0.5, 1);
       shapes[0].set(2.8, 1);
     }
-    document.documentElement.style.setProperty("--paper", config.paper);
+    document.documentElement.style.setProperty(
+      "--paper",
+      paintedMode ? "#f7f4eb" : config.paper,
+    );
     document.querySelector("h1").textContent = config.title;
     document.querySelector("header p").textContent = config.subtitle;
     document.querySelector(".seal").textContent =
@@ -431,9 +487,13 @@ async function switchDestination(id) {
       );
     document
       .querySelector("#scene")
-      .setAttribute("aria-label", `${config.title}三维山水场景`);
+      .setAttribute(
+        "aria-label",
+        `${config.title}${paintedMode ? "半3D水墨绘景，左右拖动查看视差" : "三维山水场景"}`,
+      );
     document.title = `${config.title} · 杭州小景`;
-    resetCamera();
+    document.querySelector("#motion").hidden = paintedMode;
+    resizeScene();
     loading.classList.add("done");
   } catch (error) {
     if (version !== selectionVersion) return;
@@ -485,6 +545,7 @@ renderer.setAnimationLoop((now) => {
   windUniform.value = time;
   water.material.uniforms.time.value = time;
   controls.update();
+  if (paintedMode) constrainPaintedCamera();
   renderer.render(scene, camera);
   frames++;
   if (now - sample > 1200) {

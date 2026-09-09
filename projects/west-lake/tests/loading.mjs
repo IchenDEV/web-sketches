@@ -16,7 +16,7 @@ const waitFor = (id) =>
   );
 const resources = () =>
   get(
-    'performance.getEntriesByType("resource").map(e=>e.name.split("/").pop())',
+    'performance.getEntriesByType("resource").map(e=>new URL(e.name).pathname)',
   );
 try {
   run(
@@ -27,7 +27,7 @@ try {
   const first = resources();
   assert.deepEqual(
     first.filter((name) => name.endsWith(".glb")),
-    ["bamboo-path.glb"],
+    [],
   );
   assert.ok(
     !first.some((name) =>
@@ -35,12 +35,15 @@ try {
     ),
     "Do not download original-scene assets or code for a forest deep link",
   );
+  const painted = first.filter((name) => name.includes("/painted/"));
+  assert.equal(painted.length, 4);
+  assert.ok(painted.every((name) => name.includes("/bamboo-path/")));
   run("select", "#destination", "wansong");
   waitFor("wansong");
   assert.equal(
-    resources().filter((name) => name === "jiuxi-backdrop.png").length,
-    1,
-    "Reuse the shared forest backdrop",
+    resources().filter((name) => name.includes("/painted/wansong/")).length,
+    3,
+    "Load only the chosen painting's layers",
   );
   run("select", "#destination", "three-pools");
   waitFor("three-pools");
@@ -51,37 +54,57 @@ try {
     "shore-rocks.glb",
     "willow-foliage.png",
   ])
-    assert.ok(original.includes(name));
+    assert.ok(original.some((path) => path.endsWith("/" + name)));
+  run(
+    "eval",
+    `(() => {
+    window.instanceDisposals = 0;
+    window.expectedInstanceDisposals = 0;
+    sceneDebug.scene.getObjectByName('three-pools').traverse(object => {
+      if (!object.isInstancedMesh) return;
+      window.expectedInstanceDisposals++;
+      object.addEventListener('dispose', () => window.instanceDisposals++);
+    });
+  })()`,
+  );
   run("select", "#destination", "bamboo-path");
   waitFor("bamboo-path");
   assert.equal(
-    resources().filter((name) => name === "bamboo-path.glb").length,
-    1,
-    "Cached revisit must not fetch the model again",
+    resources().filter((name) => name.includes("/painted/bamboo-path/")).length,
+    4,
+    "Cached revisit must not fetch the painting again",
   );
   run(
     "eval",
     `(() => {
     const nativeFetch = window.fetch;
     window.fetch = (url, options) => {
-      if (!String(url).endsWith('leifeng.glb')) return nativeFetch(url, options);
-      window.slowModelSignal = options.signal;
+      if (!String(url).includes('/painted/ruan-islet/')) return nativeFetch(url, options);
+      window.slowImageSignal = options.signal;
       return new Promise((resolve, reject) => options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), {once:true}));
     };
   })()`,
   );
-  run("select", "#destination", "leifeng");
-  run("wait", "--fn", "Boolean(window.slowModelSignal)");
+  run("select", "#destination", "ruan-islet");
+  run("wait", "--fn", "Boolean(window.slowImageSignal)");
   run("select", "#destination", "qian-king");
   waitFor("qian-king");
   assert.equal(
-    get("window.slowModelSignal.aborted"),
+    get("window.slowImageSignal.aborted"),
     true,
-    "Switching must abort the previous model request",
+    "Switching must abort the previous image request",
+  );
+  run("select", "#destination", "dragon-well");
+  waitFor("dragon-well");
+  assert.ok(get("window.expectedInstanceDisposals") > 0);
+  assert.equal(
+    get("window.instanceDisposals"),
+    get("window.expectedInstanceDisposals"),
+    "Evicting Three Pools must release instanced foliage GPU buffers",
   );
   assert.ok(!run("errors").trim());
   console.log(
-    "Per-scene startup, lazy original code/assets, shared texture reuse, cached revisits and canceled model requests passed.",
+    "Per-scene startup, lazy original code/assets, per-scene images, cached revisits and canceled image requests passed.",
   );
 } finally {
   run("close");

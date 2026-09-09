@@ -31,7 +31,11 @@ const scratch = mkdtempSync(join(tmpdir(), "west-lake-check-"));
 try {
   run("open", process.env.SCENE_URL || "http://localhost:5173");
   run("set", "viewport", "1440", "900");
-  run("wait", "--fn", "window.sceneDebug?.ready");
+  run(
+    "wait",
+    "--fn",
+    "window.sceneDebug?.destination === 'three-pools' && sceneDebug.renderer.info.render.triangles > 10000",
+  );
   assert.equal(get("sceneDebug.ready"), true);
   assert.ok(get("sceneDebug.renderer.info.render.triangles") > 10000);
   const initial = get("sceneDebug.camera.position.toArray()");
@@ -70,7 +74,7 @@ try {
     flowingWater,
     "Water must move after resuming",
   );
-  const ids = ["three-pools", "leifeng", "broken-bridge", "nine-creeks"];
+  const ids = ["three-pools", "fish-harbor", "broken-bridge", "nine-creeks"];
   const switchTo = (id) => {
     run("select", "#destination", id);
     run(
@@ -93,9 +97,12 @@ try {
     "--fn",
     'window.sceneDebug?.destination === "three-pools" && !sceneDebug.loading',
   );
-  const blockedModel = new URL("assets/leifeng.glb", get("location.href")).href;
+  const blockedModel = new URL(
+    "assets/painted/fish-harbor/background.webp",
+    get("location.href"),
+  ).href;
   run("network", "route", blockedModel, "--abort");
-  run("select", "#destination", "leifeng");
+  run("select", "#destination", "fish-harbor");
   run(
     "wait",
     "--fn",
@@ -110,7 +117,7 @@ try {
   run("errors", "--clear");
   for (const id of ids.slice(1)) switchTo(id);
   const cachedGeometryCount = get("sceneDebug.renderer.info.memory.geometries");
-  switchTo("leifeng");
+  switchTo("fish-harbor");
   switchTo("nine-creeks");
   assert.equal(
     get("sceneDebug.renderer.info.memory.geometries"),
@@ -121,7 +128,7 @@ try {
   run(
     "wait",
     "--fn",
-    'sceneDebug.destination === "leifeng" && !sceneDebug.loading',
+    'sceneDebug.destination === "fish-harbor" && !sceneDebug.loading',
   );
   run("forward");
   run(
@@ -137,15 +144,17 @@ try {
   );
   assert.equal(get("document.title"), "九溪烟树 · 杭州小景");
   switchTo("broken-bridge");
-  run("click", "#motion");
-  const snowStoppedAt = get("sceneDebug.time");
-  run("eval", "new Promise(resolve => setTimeout(resolve, 160))");
-  assert.equal(
-    get("sceneDebug.time"),
-    snowStoppedAt,
-    "Snow and stream animation must share the pause clock",
-  );
-  run("click", "#motion");
+  assert.equal(get("sceneDebug.controls.enableRotate"), false);
+  assert.equal(get("sceneDebug.controls.enablePan"), true);
+  run("mouse", "move", "750", "440");
+  run("mouse", "down");
+  run("mouse", "move", "960", "450");
+  run("mouse", "up");
+  run("wait", "250");
+  assert.ok(Math.abs(get("sceneDebug.camera.position.x")) > 0.1);
+  assert.ok(Math.abs(get("sceneDebug.camera.position.y")) < 0.001);
+  run("click", "#reset");
+  assert.ok(Math.abs(get("sceneDebug.camera.position.x")) < 0.001);
   run("set", "viewport", "390", "844");
   assert.equal(get("document.documentElement.scrollWidth <= innerWidth"), true);
   const consoleOutput = run("console");

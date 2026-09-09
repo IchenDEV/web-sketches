@@ -389,3 +389,7 @@ footer {
 #toast {
   z-index: 3;
 }
+
+[data-scene-mode="painted"] #scene:after {
+  display: none;
+}

@@ -8,6 +8,8 @@ import {
   destinationFromHash,
 } from "../projects/west-lake/catalog.js";
 
+import { paintedDestinations } from "../projects/west-lake/painted-catalog.js";
+
 const site = new URL("../_site/", import.meta.url);
 
 test("collection links and previews resolve within a project Pages subpath", async () => {
@@ -133,6 +135,30 @@ test("three generations contain exactly thirty distinct reachable scenes", () =>
   assert.equal(
     new Set(assets).size,
     29,
-    "Each added place needs its own authored model",
+    "Historical scene models remain distinct",
   );
+});
+
+test("every painted destination ships its own complete layer set", async () => {
+  assert.deepEqual(
+    paintedDestinations,
+    new Set(destinationOrder.filter((id) => id !== "three-pools")),
+  );
+  for (const id of paintedDestinations) {
+    const masks =
+      id === "bamboo-path" ? ["left-key", "right-key"] : ["foreground-key"];
+    for (const name of ["source", "background", ...masks]) {
+      const asset = new URL(
+        `projects/west-lake/assets/painted/${id}/${name}.webp`,
+        site,
+      );
+      const bytes = await readFile(asset);
+      assert.equal(
+        bytes.subarray(0, 4).toString(),
+        "RIFF",
+        `${id}/${name} is a complete WebP image`,
+      );
+      assert.equal(bytes.subarray(8, 12).toString(), "WEBP");
+    }
+  }
 });
