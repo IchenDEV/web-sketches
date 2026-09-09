@@ -34,7 +34,17 @@ export function createAtlas(onChoose) {
       title.textContent = config.title;
       const subtitle = document.createElement("small");
       subtitle.textContent = config.subtitle;
-      button.append(number, title, subtitle);
+      const preview = document.createElement("img");
+      preview.dataset.src = `${import.meta.env.BASE_URL}assets/previews/${id}.webp`;
+      preview.alt = "";
+      preview.width = 600;
+      preview.height = 200;
+      preview.loading = "lazy";
+      preview.decoding = "async";
+      const caption = document.createElement("div");
+      caption.className = "atlas-caption";
+      caption.append(number, title, subtitle);
+      button.append(preview, caption);
       button.onclick = () => {
         dialog.close();
         onChoose(id);
@@ -46,7 +56,14 @@ export function createAtlas(onChoose) {
     content.append(section);
     select.append(optgroup);
   }
-  opener.onclick = () => dialog.showModal();
+  opener.onclick = () => {
+    // Opening the atlas requests small previews, never full scene textures.
+    for (const image of content.querySelectorAll("img[data-src]")) {
+      image.src = image.dataset.src;
+      delete image.dataset.src;
+    }
+    dialog.showModal();
+  };
   document.querySelector("#close-atlas").onclick = () => dialog.close();
   dialog.addEventListener("click", (event) => {
     if (event.target === dialog) {

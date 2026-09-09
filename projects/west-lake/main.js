@@ -1,3 +1,4 @@
+import "./music.js";
 import {
   destinations,
   destinationFromHash,

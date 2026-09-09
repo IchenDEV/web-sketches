@@ -162,3 +162,25 @@ test("every painted destination ships its own complete layer set", async () => {
     }
   }
 });
+
+test("atlas previews, overview and licensed music ship with the page", async () => {
+  for (const id of [...destinationOrder, "all-scenes"]) {
+    assert.ok(
+      (
+        await stat(
+          new URL(`projects/west-lake/assets/previews/${id}.webp`, site),
+        )
+      ).size > 0,
+    );
+  }
+  assert.ok(
+    (await stat(new URL("projects/west-lake/assets/audio/pei-lan.mp3", site)))
+      .size > 0,
+  );
+  const html = await readFile(
+    new URL("projects/west-lake/index.html", site),
+    "utf8",
+  );
+  assert.ok(html.includes('preload="none"'));
+  assert.ok(html.includes("creativecommons.org/licenses/by/2.5/"));
+});

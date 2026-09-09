@@ -393,3 +393,163 @@ footer {
 [data-scene-mode="painted"] #scene:after {
   display: none;
 }
+
+/* A larger vertical inscription keeps the open sky feeling like a painted scroll. */
+.poem {
+  top: 38px;
+  right: 42px;
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "Songti SC", serif;
+  font-size: 23px;
+  letter-spacing: 0.24em;
+  line-height: 2.15;
+  color: #56604f;
+  text-shadow: 0 1px 5px #f7f4eb;
+}
+.soundscape {
+  position: fixed;
+  top: 35px;
+  left: 32px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-size: 13px;
+  color: #66715c;
+}
+.soundscape button {
+  min-width: 60px;
+}
+.music-info {
+  position: relative;
+}
+.music-info summary {
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+.music-panel {
+  position: absolute;
+  top: 30px;
+  left: 0;
+  width: 240px;
+  padding: 18px;
+  background: #f7f4ebf5;
+  border: 1px solid #c7caba;
+  box-shadow: 0 8px 30px #29342b14;
+}
+.music-panel input {
+  display: block;
+  width: 100%;
+  margin: 14px 0;
+  accent-color: #77896d;
+}
+.music-panel p {
+  font-size: 10px;
+  line-height: 1.8;
+  margin: 6px 0 0;
+}
+.music-panel a {
+  color: inherit;
+  text-underline-offset: 3px;
+}
+#music-status {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  width: 250px;
+  font-size: 11px;
+}
+.clean .soundscape {
+  display: none;
+}
+#atlas {
+  width: min(1220px, calc(100vw - 32px));
+}
+.atlas-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.atlas-grid button {
+  padding: 0;
+  overflow: hidden;
+  background: #f7f4eb;
+}
+.atlas-grid img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3;
+  object-fit: cover;
+}
+.atlas-caption {
+  position: relative;
+  padding: 12px 16px 16px;
+}
+.atlas-caption .atlas-number {
+  position: absolute;
+  top: 17px;
+  right: 14px;
+}
+.atlas-caption strong {
+  font-size: 18px;
+  letter-spacing: 3px;
+  margin-top: 0;
+}
+.atlas-caption small {
+  font-size: 10px;
+}
+.atlas-grid button[aria-current] .atlas-caption {
+  background: #e4e9da;
+}
+@media (max-width: 1000px) {
+  .soundscape {
+    top: 108px;
+    left: 24px;
+  }
+  .poem {
+    font-size: 19px;
+    right: 26px;
+  }
+  .atlas-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .soundscape {
+    top: 112px;
+    left: 22px;
+    gap: 10px;
+  }
+  .poem {
+    top: 25px;
+    right: 18px;
+    font-size: 15px;
+    line-height: 1.85;
+    letter-spacing: 0.2em;
+  }
+  .music-panel {
+    left: -70px;
+  }
+  .atlas-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+}
+
+.atlas-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 12px;
+}
+.atlas-actions a {
+  color: #7c6652;
+  text-underline-offset: 4px;
+}
+@media (max-width: 650px) {
+  .atlas-actions {
+    gap: 8px;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+}
